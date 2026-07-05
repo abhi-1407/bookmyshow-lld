@@ -28,6 +28,10 @@ public class PaymentService {
     }
 
     public Payment processPayment(Booking booking, BigDecimal amount, boolean paymentSuccessful){
+
+        if(calculateFinalAmount(booking).equals(amount)){
+            throw new IllegalStateException("Payment amount does not match booking amount");
+        }
         if (booking.getStatus() != BookingStatus.PENDING) {
             throw new IllegalStateException("Payment can only be processed for pending bookings");
         }
@@ -66,6 +70,10 @@ public class PaymentService {
         paymentRepository.save(payment);
         bookingRepository.save(booking);
     };
+
+    private BigDecimal calculateFinalAmount(Booking booking){
+        return booking.getShowSeats().stream().map(ShowSeat::getPrice).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
 
 
 
