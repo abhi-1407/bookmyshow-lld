@@ -1,8 +1,10 @@
-BookMyShow - Low Level Design
+# BookMyShow - Low Level Design
 
 A simplified BookMyShow-like system designed to practice Low-Level Design (LLD), Object-Oriented Design, concurrency handling, and backend engineering concepts.
 
-Functional Requirements
+---
+
+## Functional Requirements
 
 1. A user should be able to select a city.
 2. A user should be able to browse movies and shows available in the selected city.
@@ -14,38 +16,141 @@ Functional Requirements
 8. On payment failure or seat-lock expiration, the locked seats should be released.
 9. A user should receive a confirmation once the booking is successfully completed.
 
-Non-Functional Requirements
+---
+
+## Non-Functional Requirements
 
 1. The system should be highly available and provide low latency while browsing movies and shows.
 2. The system should maintain strong consistency for seat-locking and booking operations to prevent double booking.
 3. The system should correctly handle concurrent booking attempts for the same seat.
 4. The design should be extensible to support additional seat types, pricing strategies, and payment methods.
 
-Back-of-the-Envelope Estimation
+---
 
-* The system is expected to be read-heavy since browsing movies, shows, and seat availability occurs significantly more frequently than booking operations.
-* Booking operations are less frequent but require strong consistency and correct concurrency handling.
+## Back-of-the-Envelope Estimation
 
-Core Entities
+- Read operations are expected to be significantly higher than write operations.
+- Browsing movies, shows, and seat availability is read-heavy.
+- Booking operations require strong consistency and concurrency control.
 
-To be identified during the design process.
+---
 
-Class Diagram
+## Domain Model
 
-To be added after identifying the core entities and their relationships.
+### Entities
 
-Design Decisions
+- User
+- City
+- Theatre
+- Screen
+- Movie
+- Show
+- Seat
+- ShowSeat
+- SeatLock
+- Booking
+- Payment
 
-To be documented as the design evolves.
+### Enums
 
-Concurrency Handling
+- SeatType
+- SeatStatus
+- BookingStatus
+- PaymentStatus
 
-To be documented while designing the seat-locking and booking flow.
+---
 
-Design Patterns Used
+## Entity Relationships
 
-To be documented as design patterns are introduced.
+```
+City
+ └── Theatre
+      └── Screen
+            ├── Seat
+            └── Show
+                  ├── Movie
+                  └── ShowSeat
+                           │
+                           └── Seat
 
-Future Improvements
+User
+ ├── Booking
+ │      ├── Show
+ │      └── ShowSeats
+ │
+ └── SeatLock
 
-To be added after completing the initial implementation.
+Booking
+ └── Payment(s)
+```
+
+---
+
+## Important Design Decisions
+
+### Show vs Movie
+
+A `Movie` contains immutable movie metadata.
+
+A `Show` represents a scheduled screening of a movie at a particular screen and time.
+
+### Seat vs ShowSeat
+
+`Seat` represents the physical seat inside a screen.
+
+`ShowSeat` represents the availability and pricing of a seat for a specific show.
+
+This allows the same physical seat to have different states across different shows.
+
+### Seat Locking
+
+Seat locking is modeled as a separate entity (`SeatLock`) instead of embedding lock information inside `ShowSeat`.
+
+This allows lock lifecycle management, expiration handling, and improves separation of concerns.
+
+### Booking
+
+A booking represents a booking transaction.
+
+A booking can contain multiple seats, but all seats must belong to the same show.
+
+---
+
+## Class Diagram
+
+_To be added._
+
+---
+
+## Repository Layer
+
+_To be added._
+
+---
+
+## Service Layer
+
+_To be added._
+
+---
+
+## Concurrency Handling
+
+_To be added._
+
+---
+
+## Design Patterns Used
+
+_To be added._
+
+---
+
+## Future Improvements
+
+- Dynamic pricing
+- Coupon support
+- Multiple payment gateways
+- Seat recommendations
+- Booking cancellation and refunds
+- Notifications
