@@ -54,7 +54,7 @@ public class PaymentService {
             showSeat.setStatus(SeatStatus.BOOKED);
             showSeatRepository.save(showSeat);
         }
-        seatLockService.unlockSeat(booking.getUser(),booking.getShowSeats());
+        seatLockService.unlockSeats(booking.getUser(),booking.getShowSeats());
         paymentRepository.save(payment);
         bookingRepository.save(booking);
 
@@ -66,7 +66,7 @@ public class PaymentService {
             showSeat.setStatus(SeatStatus.AVAILABLE);
             showSeatRepository.save(showSeat);
         }
-        seatLockService.unlockSeat(booking.getUser(),booking.getShowSeats());
+        seatLockService.unlockSeats(booking.getUser(),booking.getShowSeats());
         paymentRepository.save(payment);
         bookingRepository.save(booking);
     };
