@@ -1,39 +1,31 @@
 BookMyShow - Low Level Design
 
-A simplified BookMyShow-like system designed to practice Low-Level Design (LLD), Object-Oriented Design, concurrency handling, domain modeling, and backend engineering concepts.
-
-⸻
+A simplified BookMyShow-like system built to practice Low-Level Design (LLD), Object-Oriented Design, concurrency handling, and backend engineering concepts.
 
 Functional Requirements
 
 1. A user should be able to select a city.
 2. A user should be able to browse movies and shows available in the selected city.
 3. A user should be able to view available seats for a selected show.
-4. A user should be able to select and temporarily lock seats for a maximum of 5 minutes.
-5. The system should prevent other users from booking or locking seats that are already locked by another user.
-6. A user should be able to make a payment for the selected seats.
-7. On successful payment, the booking should be confirmed.
-8. On payment failure or seat-lock expiration, the locked seats should be released.
-9. A user should receive a confirmation once the booking is successfully completed.
-
-⸻
+4. A user should be able to temporarily lock seats for a maximum of 5 minutes.
+5. The system should prevent multiple users from locking or booking the same seat concurrently.
+6. A user should be able to create a booking for locked seats.
+7. A user should be able to make a payment for the booking.
+8. On successful payment, the booking should be confirmed.
+9. On payment failure or seat-lock expiration, the temporary locks should be released.
 
 Non-Functional Requirements
 
 1. The system should provide high availability and low latency for browsing movies and shows.
-2. The system should maintain strong consistency for seat-locking and booking operations to prevent double booking.
-3. The system should correctly handle concurrent booking attempts for the same seat.
-4. The design should be extensible to support additional seat types, pricing strategies, and payment methods.
-
-⸻
+2. Seat-locking and booking operations should maintain strong consistency.
+3. The system should correctly handle concurrent booking attempts for the same seats.
+4. The design should be extensible to support additional pricing strategies, seat types, and payment methods.
 
 Back-of-the-Envelope Estimation
 
-* Read operations are expected to be significantly higher than write operations.
-* Browsing movies, shows, and seat availability is read-heavy.
+* The system is expected to be read-heavy.
+* Browsing movies, shows, and seat availability occurs significantly more frequently than booking operations.
 * Booking operations are less frequent but require strong consistency and concurrency control.
-
-⸻
 
 Domain Model
 
@@ -58,8 +50,6 @@ Enums
 * BookingStatus
 * PaymentStatus
 
-⸻
-
 Entity Relationships
 
 City
@@ -79,26 +69,7 @@ User
 Booking
 └── Payment(s)
 
-⸻
-
 Important Design Decisions
-
-Domain Objects vs Persistence Models
-
-The project currently models relationships using object references rather than database identifiers.
-
-For example:
-
-Payment → Booking
-Show → Movie
-Show → Screen
-Seat → Screen
-
-instead of storing fields such as bookingId, movieId, or screenId inside domain objects.
-
-This keeps the domain model focused on object relationships rather than database implementation details.
-
-⸻
 
 Show vs Movie
 
@@ -106,25 +77,19 @@ A Movie contains metadata about a movie.
 
 A Show represents a scheduled screening of a movie on a particular screen at a particular time.
 
-This separation allows the same movie to have multiple shows across different screens, theatres, cities, and timings.
-
-⸻
+This allows the same movie to have multiple shows across different screens, theatres, cities, and timings.
 
 Seat vs ShowSeat
 
 A Seat represents a physical seat inside a screen.
 
-A ShowSeat represents the state and pricing of a physical seat for a particular show.
+A ShowSeat represents the state and pricing of a physical seat for a specific show.
 
-For example, the same physical seat can have different states for different shows:
+The same physical seat can therefore have different availability states across different shows.
 
 10:00 AM Show → A1 → AVAILABLE
 02:00 PM Show → A1 → BOOKED
-06:00 PM Show → A1 → LOCKED
-
-Therefore, seat availability belongs to ShowSeat rather than Seat.
-
-⸻
+06:00 PM Show → A1 → AVAILABLE
 
 Seat Pricing
 
@@ -132,37 +97,31 @@ Pricing is stored on ShowSeat.
 
 This allows the price of the same physical seat to vary between shows.
 
-BigDecimal is used instead of double for monetary values to avoid floating-point precision issues.
-
-⸻
+BigDecimal is used for monetary values to avoid floating-point precision issues.
 
 Seat Locking
 
-Seat locking is modeled using a separate SeatLock entity rather than embedding lock information directly inside ShowSeat.
+Seat locking is modeled using a separate SeatLock entity.
 
 A SeatLock contains:
 
 * The locked ShowSeat
 * The user who owns the lock
-* The lock start time
+* The lock creation time
 
 The lock expires after five minutes.
 
-Keeping locking as a separate domain concept allows lock ownership, expiration, validation, and release behavior to be managed independently.
-
-⸻
+Separating SeatLock from ShowSeat allows lock ownership, expiration, validation, and release behavior to be managed independently.
 
 Booking Domain Invariant
 
-A booking can contain multiple ShowSeats, but every seat in the booking must belong to the same Show.
+A booking can contain multiple ShowSeats, but every seat must belong to the same Show.
 
-This is a domain invariant enforced by BookingService.
-
-⸻
+This invariant is validated by BookingService.
 
 Repository Layer
 
-The application uses repository interfaces to separate domain and service logic from persistence implementation details.
+The project uses repository interfaces to separate business logic from persistence implementation details.
 
 Current repositories:
 
@@ -172,13 +131,9 @@ Current repositories:
 * BookingRepository
 * PaymentRepository
 
-The current implementation uses in-memory repositories backed by ConcurrentHashMap.
+The current implementations use ConcurrentHashMap for in-memory persistence.
 
-Services depend on repository interfaces rather than concrete implementations.
-
-This allows the persistence implementation to be replaced without modifying business logic.
-
-For example:
+Services depend on repository abstractions instead of concrete implementations.
 
 BookingService
 ↓
@@ -186,9 +141,7 @@ BookingRepository
 ↑
 InMemoryBookingRepository
 
-The in-memory implementation could later be replaced with a PostgreSQL or JPA-backed implementation.
-
-⸻
+The in-memory repositories can later be replaced with database-backed implementations without modifying the service layer.
 
 Service Layer
 
@@ -197,32 +150,30 @@ SeatLockService
 Responsible for:
 
 * Locking selected seats
-* Preventing multiple users from acquiring the same seat lock
+* Preventing concurrent locking of the same seats
 * Validating lock ownership
-* Checking lock expiration
-* Releasing locks
+* Validating lock expiration
+* Releasing temporary locks
 
 BookingService
 
 Responsible for:
 
-* Validating that all selected seats belong to the requested show
-* Validating that the user owns valid locks for all selected seats
+* Validating that selected seats belong to the requested show
+* Validating seat-lock ownership
 * Creating a booking in the PENDING state
 
 PaymentService
 
 Responsible for:
 
-* Processing payment attempts
 * Validating booking state
-* Validating the payment amount
+* Calculating and validating the booking amount
+* Processing payment attempts
 * Updating payment status
 * Updating booking status
-* Marking seats as booked after successful payment
+* Marking seats as booked
 * Releasing temporary seat locks
-
-⸻
 
 Booking Flow
 
@@ -236,9 +187,7 @@ Seats temporarily locked
 ↓
 BookingService.createBooking()
 ↓
-Validate ShowSeat domain invariant
-↓
-Validate lock ownership
+Validate seat ownership and show invariant
 ↓
 Booking created as PENDING
 ↓
@@ -254,46 +203,7 @@ ShowSeats BOOKED                Seat locks released
 ↓
 Temporary locks removed
 
-⸻
-
-Payment Amount Validation
-
-The payment amount is calculated from the prices of all ShowSeats belonging to the booking.
-
-Java Streams are used to calculate the total:
-
-ShowSeats
-↓
-Map each ShowSeat to its price
-↓
-Reduce all prices into a single total
-
-The supplied payment amount must match the calculated booking amount.
-
-BigDecimal.compareTo() is used instead of equals() because values with different scales, such as 10.0 and 10.00, should be treated as numerically equal.
-
-⸻
-
-Booking State Validation
-
-Payment processing is only allowed when a booking is in the PENDING state.
-
-Valid transitions:
-
-PENDING → CONFIRMED
-PENDING → CANCELLED
-
-Attempting to process payment for an already confirmed or cancelled booking results in an invalid state operation.
-
-State validation should not be confused with idempotency.
-
-True payment idempotency would require mechanisms such as idempotency keys to prevent duplicate requests from being processed concurrently.
-
-⸻
-
 Concurrency Handling
-
-Initial Problem
 
 Seat locking involves a check-then-act operation:
 
@@ -301,87 +211,144 @@ Check whether seat is locked
 ↓
 If unlocked
 ↓
-Create lock
+Create SeatLock
 
-Without synchronization, two threads could execute the operation concurrently:
+Without concurrency control, multiple threads could observe the same seat as available and attempt to lock it simultaneously.
 
-Thread 1 → checks A1 → AVAILABLE
-Thread 2 → checks A1 → AVAILABLE
-Thread 1 → creates lock
-Thread 2 → creates lock
+Initial Approach: Method-Level Synchronization
 
-This creates a race condition.
+The initial implementation used a synchronized method.
 
-⸻
+This prevented race conditions but introduced coarse-grained locking.
 
-Current Approach
+Users attempting to book unrelated seats would unnecessarily block each other.
 
-The current SeatLockService uses method-level synchronized locking.
+Current Approach: Per-Seat ReentrantLock
 
-This ensures that only one thread can execute the seat-locking critical section at a time.
+The current implementation maintains one ReentrantLock per ShowSeat.
 
-Thread 1 enters
-↓
-Validates seats
-↓
-Creates locks
-↓
-Exits
-Thread 2 enters
-↓
-Observes existing locks
-↓
-Fails
+ShowSeat A1 → ReentrantLock A1
+ShowSeat A2 → ReentrantLock A2
+ShowSeat B1 → ReentrantLock B1
 
-⸻
+This allows users booking unrelated seats to proceed concurrently while preventing concurrent modification of the same seat.
+
+The locks are stored in a ConcurrentHashMap.
+
+ConcurrentHashMap<ShowSeatId, ReentrantLock>
+
+computeIfAbsent() is used to atomically retrieve or create the lock associated with a seat.
+
+Preventing Deadlocks
+
+A booking can contain multiple seats.
+
+Without consistent lock ordering, two threads could deadlock:
+
+Thread 1 locks A1 → waits for A2
+Thread 2 locks A2 → waits for A1
+
+Before acquiring locks, seats are sorted by ID.
+
+Thread 1 → A1 → A2
+Thread 2 → A1 → A2
+
+This establishes a consistent global lock ordering and prevents circular wait.
 
 Atomic Multi-Seat Locking
 
-An earlier implementation validated and locked seats in the same loop.
+The implementation follows a two-phase approach:
 
-For example, when attempting to lock:
-
-A1, A2, A3
-
-if A3 was already locked, A1 and A2 could already have been locked before the operation failed.
-
-This resulted in a partially updated state.
-
-The current implementation uses two phases:
-
-Phase 1
+Acquire all per-seat ReentrantLocks
+↓
 Validate ALL requested seats
 ↓
-If any seat cannot be locked
-Reject the complete operation
+If any validation fails
+Reject the entire operation
 ↓
-Phase 2
-Create ALL seat locks
+Otherwise create ALL SeatLocks
+↓
+Release ReentrantLocks
 
-Since both phases execute inside the same synchronized critical section, another thread cannot modify the lock state between validation and lock creation.
+Validating all seats before creating any SeatLock prevents partially locked bookings.
 
-This provides all-or-nothing multi-seat locking for the current in-memory implementation.
+ReentrantLock vs SeatLock
 
-⸻
+The project uses two different locking concepts.
 
-Current Concurrency Limitation
+ReentrantLock provides thread-level synchronization inside the application.
 
-Method-level synchronization is coarse-grained.
+SeatLock is a domain entity representing a user’s temporary reservation of a seat.
 
-For example:
+ReentrantLock
+→ Which thread can currently access the critical section?
+SeatLock
+→ Which user owns the seat reservation for five minutes?
 
-User 1 → Booking A1
-User 2 → Booking Z10
+Lock Lifecycle
 
-Even though the users are booking unrelated seats, one request must wait for the other because the entire lockSeats() method is synchronized.
+ReentrantLocks are not removed from the lock registry after use.
 
-A future improvement is to implement finer-grained per-seat locking using ReentrantLock.
+Removing a lock carelessly could allow multiple lock objects to exist for the same seat while other threads still hold references to the previous lock.
 
-⸻
+Temporary domain SeatLocks are removed after successful payment or payment failure.
+
+Concurrent Booking Simulation
+
+The application includes a concurrent booking simulation using:
+
+* ExecutorService
+* CountDownLatch
+* AtomicReference
+
+Two users attempt to lock the same seats concurrently.
+
+Example:
+
+Abhilash and Rahul attempt to lock seats A1 and A2 concurrently.
+Rahul successfully locks A1 and A2.
+Abhilash attempts to acquire the same seats and is rejected.
+Rahul creates a booking.
+Booking Status → PENDING
+Payment succeeds.
+Payment Status → SUCCESS
+Booking Status → CONFIRMED
+A1 Status → BOOKED
+A2 Status → BOOKED
+Temporary SeatLocks → RELEASED
+
+CountDownLatch is used to ensure both threads begin competing for the seats at approximately the same time.
+
+AtomicReference is used to safely record which user successfully acquired the seat locks.
+
+Payment Amount Validation
+
+The total booking amount is calculated from the prices of the selected ShowSeats.
+
+Java Streams are used to:
+
+ShowSeats
+↓
+Map each ShowSeat to its price
+↓
+Reduce all prices into one total
+
+BigDecimal.compareTo() is used for numeric comparison instead of equals().
+
+Booking State Validation
+
+Payment can only be processed for bookings in the PENDING state.
+
+Valid state transitions:
+
+PENDING → CONFIRMED
+PENDING → CANCELLED
+
+State validation prevents invalid booking transitions.
+
+True payment idempotency would require an additional mechanism such as idempotency keys.
 
 Exception Handling
-
-The project currently uses:
 
 IllegalArgumentException
 
@@ -394,37 +361,38 @@ Examples:
 
 IllegalStateException
 
-Used when an operation cannot be performed because of the current system or object state.
+Used when an operation cannot be performed because of the current state.
 
 Examples:
 
 * Processing payment for a non-pending booking
 * Attempting to lock an already locked seat
 
-Custom domain exceptions can be introduced as a future improvement.
-
-⸻
-
-Java Concepts Practiced
+Java and Backend Concepts Practiced
 
 * Object-Oriented Design
+* Low-Level Design
 * Domain Modeling
 * Domain Invariants
-* Interfaces
-* Dependency Inversion
 * Repository Pattern
+* Dependency Inversion
+* Separation of Concerns
 * Java Streams
 * Optional
 * BigDecimal
 * UUID
 * ConcurrentHashMap
 * synchronized
+* ReentrantLock
+* ExecutorService
+* CountDownLatch
+* AtomicReference
 * Race Conditions
+* Deadlock Prevention
+* Lock Ordering
 * Check-Then-Act Problems
-* Atomic Operations
+* Multi-Seat Atomic Locking
 * Exception Handling
-
-⸻
 
 Design Patterns and Principles Used
 
@@ -438,50 +406,27 @@ Services depend on repository abstractions instead of concrete in-memory impleme
 
 Separation of Concerns
 
-Responsibilities are divided between:
+Responsibilities are separated between domain objects, repositories, and services.
 
-Domain Objects
-Repositories
-Services
+Current Limitations
 
-Each layer has a separate responsibility.
-
-⸻
-
-Class Diagram
-
-To be added.
-
-⸻
-
-Testing
-
-Tests will cover the most important business and concurrency scenarios:
-
-* A user can successfully lock available seats.
-* A second user cannot lock an already locked seat.
-* Expired seat locks can be acquired again.
-* Multi-seat locking does not result in partial locks.
-* A booking cannot contain seats belonging to different shows.
-* A booking cannot be created without valid seat locks.
-* Successful payment confirms the booking.
-* Successful payment marks seats as booked.
-* Failed payment cancels the booking.
-* Payment success and failure release temporary seat locks.
-* Incorrect payment amounts are rejected.
-
-⸻
+* Concurrency control works within a single JVM instance.
+* Multiple application instances would require database-level concurrency control or distributed coordination.
+* The current lock registry can grow as new ShowSeat IDs are encountered.
+* Payment processing is simulated.
+* Custom domain exceptions have not yet been introduced.
 
 Future Improvements
 
-* Per-seat concurrency control using ReentrantLock
+* Unit and concurrency tests using JUnit
+* Persistent database implementation
+* Database-level concurrency handling
+* Idempotent payment processing
 * Custom domain exceptions
-* Idempotent payment processing using idempotency keys
 * Dynamic pricing
 * Pricing strategies
-* Multiple payment methods and payment gateways
+* Multiple payment gateways
 * Booking cancellation and refunds
 * Notifications
 * Seat recommendations
-* Persistent database implementation
 * REST APIs using Spring Boot
