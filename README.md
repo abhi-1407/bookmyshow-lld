@@ -50,25 +50,6 @@ Enums
 * BookingStatus
 * PaymentStatus
 
-Entity Relationships
-
-City
-└── Theatre
-└── Screen
-├── Seat
-└── Show
-├── Movie
-└── ShowSeat
-└── Seat
-User
-├── Booking
-│    ├── Show
-│    └── ShowSeats
-│
-└── SeatLock
-Booking
-└── Payment(s)
-
 Important Design Decisions
 
 Show vs Movie
