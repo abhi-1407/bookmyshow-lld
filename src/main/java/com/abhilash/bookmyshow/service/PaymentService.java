@@ -29,7 +29,7 @@ public class PaymentService {
 
     public Payment processPayment(Booking booking, BigDecimal amount, boolean paymentSuccessful){
 
-        if(calculateFinalAmount(booking).equals(amount)){
+        if(!calculateFinalAmount(booking).equals(amount)){
             throw new IllegalStateException("Payment amount does not match booking amount");
         }
         if (booking.getStatus() != BookingStatus.PENDING) {
