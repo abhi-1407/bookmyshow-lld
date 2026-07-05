@@ -114,6 +114,16 @@ A booking represents a booking transaction.
 
 A booking can contain multiple seats, but all seats must belong to the same show.
 
+### Atomic Seat Locking
+
+The current SeatLockService uses method-level synchronization to prevent concurrent threads from executing the seat-locking operation simultaneously.
+
+However, locking multiple seats is currently not atomic. For example, if a user attempts to lock seats A1, A2, and A3, and A3 is already locked, A1 and A2 may have already been locked before the operation fails.
+
+This can leave the system in a partially updated state.
+
+The implementation will be improved to provide all-or-nothing seat locking and finer-grained concurrency control using per-seat locks.
+
 ---
 
 ## Class Diagram
