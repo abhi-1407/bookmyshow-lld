@@ -22,6 +22,12 @@ public class SeatLockService {
             if (existingLock.isPresent() && !existingLock.get().isExpired()) {
                 throw new IllegalStateException("Seat is already locked: " + showSeat.getId());
             }
+        }
+        for (ShowSeat showSeat : showSeatList) {
+            Optional<SeatLock> existingLock = seatLockRepository.findByShowSeatId(showSeat.getId());
+            if (existingLock.isPresent() && !existingLock.get().isExpired()) {
+                throw new IllegalStateException("Seat is already locked: " + showSeat.getId());
+            }
             SeatLock seatLock = new SeatLock(UUID.randomUUID().toString(), showSeat, user, LocalDateTime.now());
             seatLockRepository.save(seatLock);
         }

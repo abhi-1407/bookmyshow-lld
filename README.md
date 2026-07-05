@@ -124,6 +124,11 @@ This can leave the system in a partially updated state.
 
 The implementation will be improved to provide all-or-nothing seat locking and finer-grained concurrency control using per-seat locks.
 
+
+### Update as after 0d717abc4d7ff6b2f426232da1928054122213b6 we are not locking the seats if any of the seat is holding onto a lock
+
+
+
 ---
 
 ## Class Diagram
