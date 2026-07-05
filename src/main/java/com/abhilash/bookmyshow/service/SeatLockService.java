@@ -11,11 +11,11 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class SeatLockService {
+    private final SeatLockRepository seatLockRepository;
 
     SeatLockService(SeatLockRepository seatLockRepository){
         this.seatLockRepository = seatLockRepository;
     }
-    private SeatLockRepository seatLockRepository;
     public synchronized void lockSeats(User user, List<ShowSeat> showSeatList){
         for (ShowSeat showSeat : showSeatList) {
             Optional<SeatLock> existingLock = seatLockRepository.findByShowSeatId(showSeat.getId());
